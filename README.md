@@ -2,6 +2,8 @@
 
 Search inside environment variable **values** across your Vercel projects. Find where specific connection strings, API keys, or URLs are being used.
 
+Built with **TypeScript** and uses **pnpm** for package management.
+
 ## What it does
 
 This tool searches **inside the actual values** of environment variables (not the names). For example:
@@ -11,8 +13,17 @@ This tool searches **inside the actual values** of environment variables (not th
 
 ## Installation
 
+This project uses **pnpm** instead of npm:
+
 ```bash
-npm install
+# Install pnpm if you don't have it
+npm install -g pnpm
+
+# Install dependencies
+pnpm install
+
+# Build the TypeScript code
+pnpm run build
 ```
 
 ## Usage
@@ -20,7 +31,13 @@ npm install
 Simply run:
 
 ```bash
-npm run env-check
+pnpm run env-check
+```
+
+Or after building:
+
+```bash
+node dist/run.js
 ```
 
 The tool will guide you through:
@@ -33,7 +50,7 @@ The tool will guide you through:
 ## Example
 
 ```bash
-$ npm run env-check
+$ pnpm run env-check
 
 🚀 Vercel Environment Variable Value Checker
 
@@ -98,6 +115,36 @@ Enter value to search for: postgres://
 - **↑↓** - Navigate up/down
 - **Ctrl+C** - Cancel
 
+## Development Commands
+
+```bash
+# Build TypeScript to JavaScript
+pnpm run build
+
+# Run in development mode (using ts-node)
+pnpm run dev
+
+# Clean build files
+pnpm run clean
+```
+
+## Project Structure
+
+```
+.
+├── bin/
+│   └── cli.ts          # CLI entry point (TypeScript)
+├── src/
+│   ├── types.ts        # TypeScript type definitions
+│   ├── config.ts       # Configuration management
+│   ├── vercel-api.ts   # Vercel API client
+│   └── index.ts        # Main application logic
+├── run.ts              # Interactive runner
+├── package.json        # pnpm package configuration
+├── tsconfig.json       # TypeScript configuration
+└── README.md
+```
+
 ## Getting a Vercel Token
 
 1. Go to https://vercel.com/account/tokens
@@ -108,6 +155,7 @@ Enter value to search for: postgres://
 ## Requirements
 
 - Node.js 18.0.0 or higher
+- pnpm package manager
 - Vercel account with API access
 
 ## License

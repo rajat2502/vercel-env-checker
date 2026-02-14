@@ -1,8 +1,21 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+interface ConfigData {
+  token?: string;
+}
+
+interface CacheData<T> {
+  timestamp: number;
+  data: T;
+}
 
 class Config {
+  private configDir: string;
+  private configFile: string;
+  private cacheDir: string;
+
   constructor() {
     this.configDir = path.join(os.homedir(), '.vercel-env-checker');
     this.configFile = path.join(this.configDir, 'config.json');
@@ -10,7 +23,7 @@ class Config {
     this.ensureConfigDir();
   }
 
-  ensureConfigDir() {
+  private ensureConfigDir(): void {
     if (!fs.existsSync(this.configDir)) {
       fs.mkdirSync(this.configDir, { recursive: true });
     }
@@ -19,51 +32,49 @@ class Config {
     }
   }
 
-  load() {
+  load(): ConfigData {
     try {
       if (fs.existsSync(this.configFile)) {
         const data = fs.readFileSync(this.configFile, 'utf8');
-        return JSON.parse(data);
+        return JSON.parse(data) as ConfigData;
       }
     } catch (error) {
-      console.error('Error loading config:', error.message);
+      console.error('Error loading config:', (error as Error).message);
     }
     return {};
   }
 
-  save(config) {
+  save(config: ConfigData): void {
     try {
       fs.writeFileSync(this.configFile, JSON.stringify(config, null, 2));
     } catch (error) {
-      throw new Error(`Failed to save config: ${error.message}`);
+      throw new Error(`Failed to save config: ${(error as Error).message}`);
     }
   }
 
-  getToken() {
+  getToken(): string | undefined {
     const config = this.load();
-    // Also check environment variable
     return process.env.VERCEL_TOKEN || config.token;
   }
 
-  setToken(token) {
+  setToken(token: string): void {
     const config = this.load();
     config.token = token;
     this.save(config);
   }
 
-  clearToken() {
+  clearToken(): void {
     const config = this.load();
     delete config.token;
     this.save(config);
   }
 
-  getCache(key) {
+  getCache<T>(key: string): T | null {
     const cacheFile = path.join(this.cacheDir, `${key}.json`);
     try {
       if (fs.existsSync(cacheFile)) {
         const data = fs.readFileSync(cacheFile, 'utf8');
-        const cache = JSON.parse(data);
-        // Check if cache is still valid (1 hour)
+        const cache = JSON.parse(data) as CacheData<T>;
         if (Date.now() - cache.timestamp < 3600000) {
           return cache.data;
         }
@@ -74,7 +85,7 @@ class Config {
     return null;
   }
 
-  setCache(key, data) {
+  setCache<T>(key: string, data: T): void {
     const cacheFile = path.join(this.cacheDir, `${key}.json`);
     try {
       fs.writeFileSync(cacheFile, JSON.stringify({
@@ -86,7 +97,7 @@ class Config {
     }
   }
 
-  clearCache() {
+  clearCache(): void {
     try {
       if (fs.existsSync(this.cacheDir)) {
         fs.rmSync(this.cacheDir, { recursive: true });
@@ -98,4 +109,4 @@ class Config {
   }
 }
 
-module.exports = Config;
+export default Config;

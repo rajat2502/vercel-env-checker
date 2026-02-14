@@ -1,32 +1,36 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
-const readline = require('readline');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const VercelEnvChecker = require('./src/index');
+import { execSync } from 'child_process';
+import * as readline from 'readline';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import VercelEnvChecker from './src/index';
+import { Project } from './src/types';
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
-function question(query) {
+function question(query: string): Promise<string> {
   return new Promise((resolve) => {
-    rl.question(query, (answer) => {
+    rl.question(query, (answer: string) => {
       resolve(answer.trim());
     });
   });
 }
 
-function isLoggedIn() {
+function isLoggedIn(): boolean {
   const configDir = path.join(os.homedir(), '.vercel-env-checker');
   const configFile = path.join(configDir, 'config.json');
   
   if (fs.existsSync(configFile)) {
     try {
-      const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      interface ConfigData {
+        token?: string;
+      }
+      const config = JSON.parse(fs.readFileSync(configFile, 'utf8')) as ConfigData;
       return !!config.token;
     } catch (e) {
       return false;
@@ -35,7 +39,7 @@ function isLoggedIn() {
   return false;
 }
 
-async function getToken() {
+async function getToken(): Promise<string | null> {
   if (process.env.VERCEL_TOKEN) {
     return process.env.VERCEL_TOKEN;
   }
@@ -52,7 +56,7 @@ async function getToken() {
   return null;
 }
 
-async function login() {
+async function login(): Promise<boolean> {
   console.log('\n🔐 Authentication\n');
   
   const token = await getToken();
@@ -84,7 +88,7 @@ async function login() {
   }
 }
 
-async function askEnvironment() {
+async function askEnvironment(): Promise<string | null> {
   console.log('\n🌍 Select environment to check:\n');
   console.log('1. production - Production deployments');
   console.log('2. preview - Preview deployments');
@@ -103,13 +107,13 @@ async function askEnvironment() {
   }
 }
 
-async function askProjectSelection(projects) {
+async function askProjectSelection(projects: Project[]): Promise<string[]> {
   console.log('\n📋 Select projects to check (Space to toggle, Enter to confirm, A to select all):\n');
   
-  const selected = new Set();
+  const selected = new Set<string>();
   let cursor = 0;
   
-  const render = () => {
+  const render = (): void => {
     console.clear();
     console.log('\n📋 Select Projects (Space to toggle, Enter to confirm, A to select all, Ctrl+C to cancel):\n');
     
@@ -134,7 +138,7 @@ async function askProjectSelection(projects) {
 
     render();
 
-    const keyHandler = (str, key) => {
+    const keyHandler = (str: string, key: { name?: string; ctrl?: boolean; sequence?: string }): void => {
       if (key.name === 'c' && key.ctrl) {
         process.stdin.removeListener('keypress', keyHandler);
         process.stdin.setRawMode(false);
@@ -185,7 +189,7 @@ async function askProjectSelection(projects) {
   });
 }
 
-async function main() {
+async function main(): Promise<void> {
   console.log('\n🚀 Vercel Environment Variable Value Checker\n');
   console.log('This tool searches INSIDE the values of environment variables\n');
   
@@ -252,7 +256,7 @@ async function main() {
   rl.close();
 }
 
-main().catch(e => {
+main().catch((e: Error) => {
   console.error('Error:', e.message);
   rl.close();
   process.exit(1);

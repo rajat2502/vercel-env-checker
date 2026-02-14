@@ -1,16 +1,20 @@
-const chalk = require('chalk');
-const Table = require('cli-table3');
-const ora = require('ora');
-const Config = require('./config');
-const VercelAPI = require('./vercel-api');
+import chalk from 'chalk';
+import Table from 'cli-table3';
+import ora from 'ora';
+import Config from './config';
+import VercelAPI from './vercel-api';
+import { Project, EnvVar, MatchResult } from './types';
 
 class VercelEnvChecker {
+  private config: Config;
+  private api: VercelAPI;
+
   constructor() {
     this.config = new Config();
     this.api = new VercelAPI();
   }
 
-  async login(providedToken) {
+  async login(providedToken?: string): Promise<void> {
     const spinner = ora('Validating token...').start();
     
     try {
@@ -27,8 +31,8 @@ class VercelEnvChecker {
           output: process.stdout,
         });
         
-        token = await new Promise((resolve) => {
-          rl.question('Token: ', (answer) => {
+        token = await new Promise<string>((resolve) => {
+          rl.question('Token: ', (answer: string) => {
             rl.close();
             resolve(answer.trim());
           });
@@ -57,15 +61,15 @@ class VercelEnvChecker {
     }
   }
 
-  async logout() {
+  async logout(): Promise<void> {
     this.config.clearToken();
     this.config.clearCache();
     console.log(chalk.green('Successfully logged out and cleared all data.'));
   }
 
-  async getProjectsList(limit = 100) {
+  async getProjectsList(limit = 100): Promise<Project[]> {
     const cacheKey = `projects_${limit}`;
-    let projects = this.config.getCache(cacheKey);
+    let projects = this.config.getCache<Project[]>(cacheKey);
     
     if (!projects) {
       projects = await this.api.getProjects(limit);
@@ -75,11 +79,11 @@ class VercelEnvChecker {
     return projects;
   }
 
-  async searchByValueInProjects(valueQuery, target = null, projects) {
+  async searchByValueInProjects(valueQuery: string, target: string | null, projects: Project[]): Promise<void> {
     const spinner = ora(`Searching environment variable values${target ? ` (${target})` : ''} in ${projects.length} selected project(s)...`).start();
     
     try {
-      const results = [];
+      const results: MatchResult[] = [];
       let searchedCount = 0;
 
       for (const project of projects) {
@@ -88,7 +92,7 @@ class VercelEnvChecker {
           spinner.text = `Searching values${target ? ` (${target})` : ''}... (${searchedCount}/${projects.length} projects)`;
           
           const envVars = await this.api.getEnvVars(project.id, true, target);
-          const matches = envVars.filter(env => {
+          const matches = envVars.filter((env: EnvVar) => {
             if (env.value) {
               return env.value.toLowerCase().includes(valueQuery.toLowerCase());
             }
@@ -115,14 +119,14 @@ class VercelEnvChecker {
 
       console.log(chalk.bold(`\n🔍 Found ${results.reduce((acc, r) => acc + r.matches.length, 0)} variable(s)${target ? ` (${target})` : ''} with values containing "${valueQuery}":\n`));
 
-      results.forEach(result => {
+      results.forEach((result: MatchResult) => {
         console.log(chalk.cyan(`\n📁 ${result.project}:`));
         const table = new Table({
           head: [chalk.bold('Key'), chalk.bold('Value (partial)'), chalk.bold('Target')],
           colWidths: [30, 50, 15],
         });
 
-        result.matches.forEach(match => {
+        result.matches.forEach((match: EnvVar) => {
           const value = match.value || '';
           const partialValue = value.length > 40 
             ? value.substring(0, 20) + '...' + value.substring(value.length - 10)
@@ -147,4 +151,4 @@ class VercelEnvChecker {
   }
 }
 
-module.exports = VercelEnvChecker;
+export default VercelEnvChecker;
