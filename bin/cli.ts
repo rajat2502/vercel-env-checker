@@ -17,7 +17,7 @@ program
 
 program
   .command('login')
-  .description('Authenticate with Vercel using a token')
+  .description('Authenticate with Vercel using an API token')
   .option('-t, --token <token>', 'Vercel API token')
   .action(async (options: { token?: string }) => {
     try {
@@ -30,7 +30,7 @@ program
 
 program
   .command('logout')
-  .description('Remove stored Vercel authentication')
+  .description('Remove stored authentication and clear all data')
   .action(async () => {
     try {
       await checker.logout();
@@ -43,8 +43,8 @@ program
 program
   .command('check-value')
   .alias('val')
-  .description('Search for text inside environment variable values')
-  .argument('<query>', 'Text to search for inside env values (e.g., "postgres://", "stripe.com")')
+  .description('Search for text within environment variable values')
+  .argument('<query>', 'Text to search for within environment variable values (e.g., "postgres://", "stripe.com")')
   .option('-t, --target <target>', 'Filter by environment: production, preview, or development')
   .action(async (query: string, options: { target?: string }) => {
     try {

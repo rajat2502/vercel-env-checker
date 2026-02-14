@@ -57,25 +57,25 @@ async function getToken(): Promise<string | null> {
 }
 
 async function login(): Promise<boolean> {
-  console.log('\n🔐 Authentication\n');
+  console.log('\n🔐 Authenticating...\n');
   
   const token = await getToken();
   
   if (token) {
-    console.log('Found Vercel token, logging in...');
+    console.log('Found Vercel token. Logging in...');
     try {
       execSync(`node bin/cli.js login -t ${token}`, { stdio: 'inherit' });
       return true;
     } catch (e) {
-      console.log('❌ Auto-login failed, please enter token manually\n');
+      console.log('❌ Auto-login failed. Please enter your token manually.\n');
     }
   }
   
-  console.log('Get your token from: https://vercel.com/account/tokens\n');
+  console.log('You can obtain a token from: https://vercel.com/account/tokens\n');
   const manualToken = await question('Enter your Vercel token: ');
   
   if (!manualToken) {
-    console.log('❌ Token is required');
+    console.log('❌ A token is required.');
     return false;
   }
   
@@ -83,17 +83,17 @@ async function login(): Promise<boolean> {
     execSync(`node bin/cli.js login -t ${manualToken}`, { stdio: 'inherit' });
     return true;
   } catch (e) {
-    console.log('❌ Login failed');
+    console.log('❌ Login failed.');
     return false;
   }
 }
 
 async function askEnvironment(): Promise<string | null> {
-  console.log('\n🌍 Select environment to check:\n');
-  console.log('1. production - Production deployments');
-  console.log('2. preview - Preview deployments');
-  console.log('3. development - Development environment');
-  console.log('4. all - All environments (default)\n');
+  console.log('\n🌍 Select an environment to check:\n');
+  console.log('1. production — Production deployments');
+  console.log('2. preview — Preview deployments');
+  console.log('3. development — Development environment');
+  console.log('4. all — All environments (default)\n');
   
   const choice = await question('Enter choice (1-4) [4]: ');
   
@@ -142,7 +142,7 @@ async function askProjectSelection(projects: Project[]): Promise<string[]> {
       if (key.name === 'c' && key.ctrl) {
         process.stdin.removeListener('keypress', keyHandler);
         process.stdin.setRawMode(false);
-        console.log('\n\n❌ Cancelled');
+        console.log('\n\n❌ Cancelled.');
         reject(new Error('Cancelled'));
         return;
       }
@@ -191,8 +191,8 @@ async function askProjectSelection(projects: Project[]): Promise<string[]> {
 
 async function main(): Promise<void> {
   console.log('\n🚀 Vercel Environment Variable Value Checker\n');
-  console.log('This tool searches INSIDE the values of environment variables\n');
-  
+  console.log('This tool searches within environment variable values.\n');
+
   // Step 1: Check if logged in
   if (!isLoggedIn()) {
     const success = await login();
@@ -201,58 +201,58 @@ async function main(): Promise<void> {
       process.exit(1);
     }
   } else {
-    console.log('✅ Already authenticated\n');
+    console.log('✅ Already authenticated.\n');
   }
-  
+
   // Step 2: Ask which environment
   const target = await askEnvironment();
   if (target) {
-    console.log(`\n✅ Will check ${target} environment\n`);
+    console.log(`\n✅ Will check the ${target} environment.\n`);
   } else {
-    console.log(`\n✅ Will check all environments\n`);
+    console.log(`\n✅ Will check all environments.\n`);
   }
-  
+
   // Step 3: Fetch and select projects
   console.log('📦 Fetching projects...\n');
   const checker = new VercelEnvChecker();
   const allProjects = await checker.getProjectsList();
-  
+
   if (allProjects.length === 0) {
-    console.log('❌ No projects found');
+    console.log('❌ No projects were found.');
     rl.close();
     process.exit(1);
   }
-  
+
   const selectedProjectIds = await askProjectSelection(allProjects);
-  
+
   if (selectedProjectIds.length === 0) {
-    console.log('❌ No projects selected');
+    console.log('❌ No projects were selected.');
     rl.close();
     process.exit(1);
   }
-  
+
   const selectedProjects = allProjects.filter(p => selectedProjectIds.includes(p.id));
-  console.log(`\n✅ Selected ${selectedProjects.length} project(s): ${selectedProjects.map(p => p.name).join(', ')}\n`);
-  
-  // Step 4: Ask what VALUE to search for
-  const searchValue = await question('Enter value to search for (e.g., postgres://, stripe.com, api.example.com, sk_live_): ');
-  
+  console.log(`\n✅ Selected ${selectedProjects.length} project(s): ${selectedProjects.map(p => p.name).join(', ')}.\n`);
+
+  // Step 4: Ask what value to search for
+  const searchValue = await question('Enter a value to search for (e.g., postgres://, stripe.com, api.example.com): ');
+
   if (!searchValue) {
-    console.log('❌ Search value is required');
+    console.log('❌ A search value is required.');
     rl.close();
     process.exit(1);
   }
-  
-  // Step 5: Search inside values
-  console.log(`\n🔍 Searching for "${searchValue}" inside environment variable values...\n`);
-  
+
+  // Step 5: Search within values
+  console.log(`\n🔍 Searching for "${searchValue}" within environment variable values...\n`);
+
   try {
     await checker.searchByValueInProjects(searchValue, target, selectedProjects);
     console.log('\n✅ Done!\n');
   } catch (e) {
-    console.log('\n❌ Search failed');
+    console.log('\n❌ Search failed.');
   }
-  
+
   rl.close();
 }
 

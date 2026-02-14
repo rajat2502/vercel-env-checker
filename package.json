@@ -1,7 +1,7 @@
 {
   "name": "vercel-env-checker",
   "version": "1.0.0",
-  "description": "CLI tool to search inside environment variable values across Vercel projects",
+  "description": "A professional CLI tool to search within environment variable values across Vercel projects",
   "main": "dist/index.js",
   "bin": {
     "vercel-env-checker": "./dist/bin/cli.js",

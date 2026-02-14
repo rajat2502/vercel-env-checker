@@ -113,11 +113,13 @@ class VercelEnvChecker {
       spinner.stop();
 
       if (results.length === 0) {
-        console.log(chalk.yellow(`\nNo environment variables with values containing "${valueQuery}"${target ? ` (${target})` : ''} found in selected projects.`));
+        console.log(chalk.yellow(`\nNo environment variables with values containing "${valueQuery}"${target ? ` (${target})` : ''} were found in the selected projects.`));
         return;
       }
 
-      console.log(chalk.bold(`\n🔍 Found ${results.reduce((acc, r) => acc + r.matches.length, 0)} variable(s)${target ? ` (${target})` : ''} with values containing "${valueQuery}":\n`));
+      const totalMatches = results.reduce((acc, r) => acc + r.matches.length, 0);
+      const variableWord = totalMatches === 1 ? 'variable' : 'variables';
+      console.log(chalk.bold(`\n🔍 Found ${totalMatches} ${variableWord}${target ? ` (${target})` : ''} with values containing "${valueQuery}":\n`));
 
       results.forEach((result: MatchResult) => {
         console.log(chalk.cyan(`\n📁 ${result.project}:`));
@@ -142,10 +144,10 @@ class VercelEnvChecker {
         console.log(table.toString());
       });
       
-      console.log(chalk.gray('\n⚠️  Note: Some values may be encrypted and not accessible via API'));
+      console.log(chalk.gray('\n⚠️  Note: Some values may be encrypted and inaccessible via the Vercel API.'));
       
     } catch (error) {
-      spinner.fail('Failed to search environment variable values');
+      spinner.fail('Failed to search environment variable values.');
       throw error;
     }
   }
