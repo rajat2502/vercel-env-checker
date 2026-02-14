@@ -1,0 +1,40 @@
+{
+  "name": "vercel-env-checker",
+  "version": "1.0.0",
+  "description": "CLI tool to check and manage environment variables across Vercel projects",
+  "main": "src/index.js",
+  "bin": {
+    "vercel-env-checker": "./bin/cli.js",
+    "vec": "./bin/cli.js"
+  },
+  "scripts": {
+    "env-check": "node run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajat2502/vercel-env-checker.git"
+  },
+  "keywords": [
+    "vercel",
+    "environment-variables",
+    "cli",
+    "deployment",
+    "devops"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/rajat2502/vercel-env-checker/issues"
+  },
+  "homepage": "https://github.com/rajat2502/vercel-env-checker#readme",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^11.1.0",
+    "ora": "^5.4.1"
+  }
+}
