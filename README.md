@@ -158,6 +158,36 @@ pnpm run clean
 3. Copy the generated token
 4. Paste it when prompted during your first run
 
+## Security & Token Storage
+
+Your Vercel API token is stored **locally** on your machine:
+
+- **Location**: `~/.vercel-env-checker/config.json`
+- **Format**: Plain JSON file with the token stored as a string
+- **Permissions**: File permissions depend on your system defaults
+- **Scope**: Token is only used to communicate with Vercel's API
+
+### Alternative: Environment Variable
+
+You can also provide the token via an environment variable instead of saving it locally:
+
+```bash
+export VERCEL_TOKEN=your_token_here
+pnpm run env-check
+```
+
+When `VERCEL_TOKEN` is set, the tool will use it automatically without prompting for login.
+
+### Removing Stored Credentials
+
+To remove the saved token and clear all cached data:
+
+```bash
+pnpm run env-check
+# Then select logout option
+# Or manually delete: rm -rf ~/.vercel-env-checker
+```
+
 ## Requirements
 
 - Node.js 18.0.0 or higher
