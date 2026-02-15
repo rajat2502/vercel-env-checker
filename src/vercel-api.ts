@@ -130,10 +130,10 @@ class VercelAPI {
   }
 
   async getEnvVars(projectId: string, includeValues = false, targetFilter: string | null = null): Promise<EnvVar[]> {
-    // Check cache first (cache key includes projectId and whether values are included)
-    const cacheKey = `envvars_${projectId}_${includeValues}`;
+    // Check cache first (cache only the raw API response, not decrypted values)
+    const cacheKey = `envvars_${projectId}_raw`;
     const cached = await this.config.getCache<EnvVar[]>(cacheKey);
-    
+
     // Use cached data if it's still fresh (using shorter TTL for env vars)
     let envs: EnvVar[];
     if (cached) {
@@ -142,20 +142,22 @@ class VercelAPI {
       interface EnvResponse {
         envs: EnvVar[];
       }
-      
+
       const data = await this.request<EnvResponse>(`/v9/projects/${projectId}/env`);
       envs = data.envs || [];
-      
+
       // Cache the raw env vars before filtering (with 5 minute TTL for env vars)
       await this.config.setCache(cacheKey, envs, ENV_CACHE_TTL);
     }
-    
+
     // Apply target filter (always do this, even with cached data)
     let filteredEnvs = envs;
     if (targetFilter) {
       filteredEnvs = envs.filter(env => env.target.includes(targetFilter));
     }
-    
+
+    // Always fetch decrypted values fresh when includeValues=true
+    // Don't cache decrypted values for security reasons
     if (includeValues) {
       // Fetch encrypted values in parallel with concurrency control
       const encryptedEnvs = filteredEnvs.filter(env => env.type === 'encrypted' || !env.value);

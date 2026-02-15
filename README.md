@@ -158,6 +158,19 @@ pnpm run clean
 3. Copy the generated token
 4. Paste it when prompted during your first run
 
+## Rate Limiting & Performance
+
+This tool implements intelligent rate limiting to stay within Vercel API limits:
+
+- **Concurrency**: Maximum 5 concurrent requests
+- **Request Rate**: Minimum 100ms between requests (max 10 req/sec)
+- **Retry Logic**: Failed requests are retried up to 3 times with exponential backoff
+- **Caching**: 
+  - Project list: Cached for 1 hour
+  - Environment variables: Cached for 5 minutes (raw data only, decrypted values are never cached)
+
+These limits are conservative and should prevent 429 (rate limit) errors while maintaining good performance.
+
 ## Security & Token Storage
 
 Your Vercel API token is stored **locally** on your machine:
