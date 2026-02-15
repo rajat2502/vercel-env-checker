@@ -1,9 +1,13 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import ora from 'ora';
+import pLimit from 'p-limit';
 import Config from './config';
 import VercelAPI from './vercel-api';
 import { Project, EnvVar, MatchResult } from './types';
+
+// Concurrency limits for project processing
+const PROJECT_CONCURRENCY = 5;
 
 class VercelEnvChecker {
   private config: Config;
@@ -22,7 +26,7 @@ class VercelEnvChecker {
       
       if (!token) {
         spinner.stop();
-        console.log(chalk.yellow('Please provide a Vercel token:'));
+        console.log(chalk.yellow('Please provide a token:'));
         console.log(chalk.gray('You can create one at https://vercel.com/account/tokens'));
         
         const readline = require('readline');
@@ -49,11 +53,11 @@ class VercelEnvChecker {
       
       if (!isValid) {
         spinner.fail('Invalid token');
-        throw new Error('Invalid Vercel token. Please check and try again.');
+        throw new Error('Invalid token. Please check and try again.');
       }
 
-      this.config.setToken(token);
-      spinner.succeed('Successfully authenticated with Vercel!');
+      await this.config.setToken(token);
+      spinner.succeed('Successfully authenticated!');
       
     } catch (error) {
       spinner.stop();
@@ -62,18 +66,18 @@ class VercelEnvChecker {
   }
 
   async logout(): Promise<void> {
-    this.config.clearToken();
-    this.config.clearCache();
+    await this.config.clearToken();
+    await this.config.clearCache();
     console.log(chalk.green('Successfully logged out and cleared all data.'));
   }
 
   async getProjectsList(limit = 100): Promise<Project[]> {
     const cacheKey = `projects_${limit}`;
-    let projects = this.config.getCache<Project[]>(cacheKey);
+    let projects = await this.config.getCache<Project[]>(cacheKey);
     
     if (!projects) {
       projects = await this.api.getProjects(limit);
-      this.config.setCache(cacheKey, projects);
+      await this.config.setCache(cacheKey, projects);
     }
     
     return projects;
@@ -84,29 +88,45 @@ class VercelEnvChecker {
     
     try {
       const results: MatchResult[] = [];
+      const limit = pLimit(PROJECT_CONCURRENCY);
       let searchedCount = 0;
 
-      for (const project of projects) {
-        try {
-          searchedCount++;
-          spinner.text = `Searching values${target ? ` (${target})` : ''}... (${searchedCount}/${projects.length} projects)`;
-          
-          const envVars = await this.api.getEnvVars(project.id, true, target);
-          const matches = envVars.filter((env: EnvVar) => {
-            if (env.value) {
-              return env.value.toLowerCase().includes(valueQuery.toLowerCase());
-            }
-            return false;
-          });
-          
-          if (matches.length > 0) {
-            results.push({
-              project: project.name,
-              matches: matches,
+      // Create search tasks for all projects
+      const searchTasks = projects.map(project => 
+        limit(async () => {
+          try {
+            searchedCount++;
+            spinner.text = `Searching values${target ? ` (${target})` : ''}... (${searchedCount}/${projects.length} projects)`;
+            
+            const envVars = await this.api.getEnvVars(project.id, true, target);
+            const matches = envVars.filter((env: EnvVar) => {
+              if (env.value) {
+                return env.value.toLowerCase().includes(valueQuery.toLowerCase());
+              }
+              return false;
             });
+            
+            if (matches.length > 0) {
+              return {
+                project: project.name,
+                matches: matches,
+              };
+            }
+            return null;
+          } catch (e) {
+            // Skip projects that fail
+            return null;
           }
-        } catch (e) {
-          // Skip projects that fail
+        })
+      );
+
+      // Execute all search tasks in parallel with concurrency control
+      const searchResults = await Promise.all(searchTasks);
+      
+      // Filter out null results
+      for (const result of searchResults) {
+        if (result) {
+          results.push(result);
         }
       }
 
@@ -119,24 +139,19 @@ class VercelEnvChecker {
 
       const totalMatches = results.reduce((acc, r) => acc + r.matches.length, 0);
       const variableWord = totalMatches === 1 ? 'variable' : 'variables';
-      console.log(chalk.bold(`\n🔍 Found ${totalMatches} ${variableWord}${target ? ` (${target})` : ''} with values containing "${valueQuery}":\n`));
+      console.log(chalk.bold(`\n🔍 Found ${totalMatches} ${variableWord}${target ? ` (${target})` : ''} with values containing "${valueQuery}":`));
 
       results.forEach((result: MatchResult) => {
         console.log(chalk.cyan(`\n📁 ${result.project}:`));
         const table = new Table({
-          head: [chalk.bold('Key'), chalk.bold('Value (partial)'), chalk.bold('Target')],
-          colWidths: [30, 50, 15],
+          head: [chalk.bold('Key'), chalk.bold('Value'), chalk.bold('Target')],
+          colWidths: [30, 80, 50],
         });
 
         result.matches.forEach((match: EnvVar) => {
-          const value = match.value || '';
-          const partialValue = value.length > 40 
-            ? value.substring(0, 20) + '...' + value.substring(value.length - 10)
-            : value;
-          
           table.push([
             match.key,
-            partialValue,
+            match.value || '',
             match.target.join(', '),
           ]);
         });
@@ -144,7 +159,7 @@ class VercelEnvChecker {
         console.log(table.toString());
       });
       
-      console.log(chalk.gray('\n⚠️  Note: Some values may be encrypted and inaccessible via the Vercel API.'));
+      console.log(chalk.gray('\n⚠️  Note: Some values may be encrypted and inaccessible via the API.'));
       
     } catch (error) {
       spinner.fail('Failed to search environment variable values.');
