@@ -5,6 +5,7 @@ import * as readline from 'readline';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import chalk from 'chalk';
 import VercelEnvChecker from './src/index';
 import { Project } from './src/types';
 
@@ -56,46 +57,48 @@ async function getToken(): Promise<string | null> {
   return null;
 }
 
+const totalSteps = 5;
+
+function printStep(stepNum: number, title: string): void {
+  console.log(chalk.bold(`Step ${stepNum}/${totalSteps}: ${title}`));
+}
+
+function printProgress(): void {
+  console.log(chalk.dim('─'.repeat(60)));
+}
+
 async function login(): Promise<boolean> {
-  console.log('\n🔐 Authenticating...\n');
-  
   const token = await getToken();
   
   if (token) {
-    console.log('Found Vercel token. Logging in...');
+    console.log(chalk.gray('  Using token from environment...'));
     try {
-      execSync(`node bin/cli.js login -t ${token}`, { stdio: 'inherit' });
+      execSync(`node dist/bin/cli.js login -t ${token}`, { stdio: 'inherit' });
       return true;
     } catch (e) {
-      console.log('❌ Auto-login failed. Please enter your token manually.\n');
+      console.log(chalk.yellow('  ⚠ Auto-login failed. Please enter your token manually.\n'));
     }
   }
   
-  console.log('You can obtain a token from: https://vercel.com/account/tokens\n');
-  const manualToken = await question('Enter your Vercel token: ');
+  console.log(chalk.gray('  You can obtain a token from: https://vercel.com/account/tokens'));
+  const manualToken = await question(chalk.cyan('  Enter your token: '));
   
   if (!manualToken) {
-    console.log('❌ A token is required.');
+    console.log(chalk.red('  ✗ A token is required.'));
     return false;
   }
   
   try {
-    execSync(`node bin/cli.js login -t ${manualToken}`, { stdio: 'inherit' });
+    execSync(`node dist/bin/cli.js login -t ${manualToken}`, { stdio: 'inherit' });
     return true;
   } catch (e) {
-    console.log('❌ Login failed.');
+    console.log(chalk.red('  ✗ Login failed.'));
     return false;
   }
 }
 
 async function askEnvironment(): Promise<string | null> {
-  console.log('\n🌍 Select an environment to check:\n');
-  console.log('1. production — Production deployments');
-  console.log('2. preview — Preview deployments');
-  console.log('3. development — Development environment');
-  console.log('4. all — All environments (default)\n');
-  
-  const choice = await question('Enter choice (1-4) [4]: ');
+  const choice = await question(chalk.gray('  1=production, 2=preview, 3=development, 4=all [4]: '));
   
   switch (choice) {
     case '1': return 'production';
@@ -108,27 +111,45 @@ async function askEnvironment(): Promise<string | null> {
 }
 
 async function askProjectSelection(projects: Project[]): Promise<string[]> {
-  console.log('\n📋 Select projects to check (Space to toggle, Enter to confirm, A to select all):\n');
-  
   const selected = new Set<string>();
   let cursor = 0;
   
+  console.log(chalk.gray(`  Use ↑↓ to navigate, Space to toggle, Enter to confirm, A to select all`));
+  
+  const totalLines = projects.length + 1; // projects + count line
+  
   const render = (): void => {
-    console.clear();
-    console.log('\n📋 Select Projects (Space to toggle, Enter to confirm, A to select all, Ctrl+C to cancel):\n');
+    // Move cursor up and clear to redraw in place
+    if (process.stdout.isTTY) {
+      // Move up to the start of the list
+      process.stdout.write(`\x1b[${totalLines}A`);
+      // Clear from cursor to end of screen
+      process.stdout.write('\x1b[J');
+    }
     
     projects.forEach((project, index) => {
       const isSelected = selected.has(project.id);
       const isCursor = index === cursor;
-      const checkbox = isSelected ? '[✓]' : '[ ]';
-      const arrow = isCursor ? '→ ' : '  ';
-      const name = isCursor ? '\x1b[36m' + project.name + '\x1b[0m' : project.name;
+      const checkbox = isSelected ? chalk.green('[✓]') : chalk.gray('[ ]');
+      const arrow = isCursor ? chalk.cyan('→ ') : '  ';
+      const name = isCursor ? chalk.cyan(project.name) : project.name;
       
-      console.log(`${arrow}${checkbox} ${name}`);
+      console.log(`  ${arrow}${checkbox} ${name}`);
     });
 
-    console.log(`\n\x1b[90m${selected.size} project(s) selected\x1b[0m`);
+    console.log(chalk.gray(`  ${selected.size} project(s) selected`));
   };
+  
+  // Print initial list
+  projects.forEach((project, index) => {
+    const isSelected = selected.has(project.id);
+    const isCursor = index === cursor;
+    const checkbox = isSelected ? chalk.green('[✓]') : chalk.gray('[ ]');
+    const arrow = isCursor ? chalk.cyan('→ ') : '  ';
+    const name = isCursor ? chalk.cyan(project.name) : project.name;
+    
+    console.log(`  ${arrow}${checkbox} ${name}`);
+  });
   
   return new Promise((resolve, reject) => {
     readline.emitKeypressEvents(process.stdin);
@@ -136,13 +157,11 @@ async function askProjectSelection(projects: Project[]): Promise<string[]> {
       process.stdin.setRawMode(true);
     }
 
-    render();
-
     const keyHandler = (str: string, key: { name?: string; ctrl?: boolean; sequence?: string }): void => {
       if (key.name === 'c' && key.ctrl) {
         process.stdin.removeListener('keypress', keyHandler);
         process.stdin.setRawMode(false);
-        console.log('\n\n❌ Cancelled.');
+        console.log(chalk.red('\n  ✗ Cancelled.'));
         reject(new Error('Cancelled'));
         return;
       }
@@ -150,7 +169,6 @@ async function askProjectSelection(projects: Project[]): Promise<string[]> {
       if (key.name === 'return' || key.name === 'enter') {
         process.stdin.removeListener('keypress', keyHandler);
         process.stdin.setRawMode(false);
-        console.clear();
         resolve(Array.from(selected));
         return;
       }
@@ -162,6 +180,7 @@ async function askProjectSelection(projects: Project[]): Promise<string[]> {
         } else {
           selected.add(project.id);
         }
+        // Redraw only the changed line
         render();
       }
 
@@ -190,74 +209,84 @@ async function askProjectSelection(projects: Project[]): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  console.log('\n🚀 Vercel Environment Variable Value Checker\n');
-  console.log('This tool searches within environment variable values.\n');
+  console.log();
+  console.log(chalk.bold.cyan('╔══════════════════════════════════════════════════════════╗'));
+  console.log(chalk.bold.cyan('║         Vercel Environment Variable Checker              ║'));
+  console.log(chalk.bold.cyan('╚══════════════════════════════════════════════════════════╝'));
+  console.log();
 
   // Step 1: Check if logged in
+  printProgress();
+  
   if (!isLoggedIn()) {
+    printStep(1, 'Authentication');
     const success = await login();
     if (!success) {
       rl.close();
       process.exit(1);
     }
   } else {
-    console.log('✅ Already authenticated.\n');
+    printStep(1, 'Authenticated');
   }
 
   // Step 2: Ask which environment
+  printProgress();
+  printStep(2, 'Select Environment');
   const target = await askEnvironment();
-  if (target) {
-    console.log(`\n✅ Will check the ${target} environment.\n`);
-  } else {
-    console.log(`\n✅ Will check all environments.\n`);
-  }
+  const envDisplay = target || 'all';
+  console.log(`  → Environment: ${envDisplay}`);
 
   // Step 3: Fetch and select projects
-  console.log('📦 Fetching projects...\n');
+  printProgress();
+  printStep(3, 'Select Projects');
   const checker = new VercelEnvChecker();
   const allProjects = await checker.getProjectsList();
 
   if (allProjects.length === 0) {
-    console.log('❌ No projects were found.');
+    console.log(chalk.red('  ✗ No projects were found.'));
     rl.close();
     process.exit(1);
   }
 
+  console.log(`  ${allProjects.length} project(s) found`);
+  
   const selectedProjectIds = await askProjectSelection(allProjects);
 
   if (selectedProjectIds.length === 0) {
-    console.log('❌ No projects were selected.');
+    console.log(chalk.red('  ✗ No projects were selected.'));
     rl.close();
     process.exit(1);
   }
 
   const selectedProjects = allProjects.filter(p => selectedProjectIds.includes(p.id));
-  console.log(`\n✅ Selected ${selectedProjects.length} project(s): ${selectedProjects.map(p => p.name).join(', ')}.\n`);
 
   // Step 4: Ask what value to search for
-  const searchValue = await question('Enter a value to search for (e.g., postgres://, stripe.com, api.example.com): ');
+  printProgress();
+  printStep(4, 'Environment Variables');
+  const searchValue = await question(chalk.cyan('  Enter environment variable: '));
 
   if (!searchValue) {
-    console.log('❌ A search value is required.');
+    console.log(chalk.red('  ✗ A search value is required.'));
     rl.close();
     process.exit(1);
   }
 
   // Step 5: Search within values
-  console.log(`\n🔍 Searching for "${searchValue}" within environment variable values...\n`);
-
+  printProgress();
+  printStep(5, 'Searching Environment Variables');
+  
   try {
     await checker.searchByValueInProjects(searchValue, target, selectedProjects);
-    console.log('\n✅ Done!\n');
   } catch (e) {
-    console.log('\n❌ Search failed.');
+    console.log(chalk.red('  ✗ Search failed.'));
   }
 
+  console.log();
   rl.close();
 }
 
 main().catch((e: Error) => {
-  console.error('Error:', e.message);
+  console.error(chalk.red('Error:'), e.message);
   rl.close();
   process.exit(1);
 });
