@@ -80,12 +80,13 @@ To avoid hitting Vercel's API limits:
 
 ## Caching Strategy
 
-| Data | Duration | Notes |
-|------|----------|-------|
-| Project list | 1 hour | Stable, rarely changes |
-| Env variables | 5 minutes | Raw data only |
+| Data | Cached | Duration | Notes |
+|------|--------|----------|-------|
+| Project list | Yes | 1 hour | Stable, rarely changes |
+| Env var metadata | Yes | 5 minutes | Key names, types, targets only |
+| Decrypted values | **NEVER** | - | Fetched fresh each time |
 
-**Security**: Decrypted/sensitive values are **never** cached.
+**Security**: Decrypted/sensitive values are **never** cached. Only raw API metadata (key names, encryption types, target environments) is stored locally.
 
 ## Data Flow
 
