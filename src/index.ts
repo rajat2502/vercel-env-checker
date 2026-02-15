@@ -145,7 +145,7 @@ class VercelEnvChecker {
         console.log(chalk.cyan(`\n📁 ${result.project}:`));
         const table = new Table({
           head: [chalk.bold('Key'), chalk.bold('Value'), chalk.bold('Target')],
-          colWidths: [30, 80, 50],
+          colWidths: [55, 55, 50],
         });
 
         result.matches.forEach((match: EnvVar) => {

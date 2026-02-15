@@ -73,7 +73,7 @@ async function login(): Promise<boolean> {
   if (token) {
     console.log(chalk.gray('  Using token from environment...'));
     try {
-      execSync(`node bin/cli.js login -t ${token} 2>/dev/null`, { stdio: 'inherit' });
+      execSync(`node dist/bin/cli.js login -t ${token}`, { stdio: 'inherit' });
       return true;
     } catch (e) {
       console.log(chalk.yellow('  ⚠ Auto-login failed. Please enter your token manually.\n'));
@@ -89,7 +89,7 @@ async function login(): Promise<boolean> {
   }
   
   try {
-    execSync(`node bin/cli.js login -t ${manualToken} 2>/dev/null`, { stdio: 'inherit' });
+    execSync(`node dist/bin/cli.js login -t ${manualToken}`, { stdio: 'inherit' });
     return true;
   } catch (e) {
     console.log(chalk.red('  ✗ Login failed.'));

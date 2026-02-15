@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import pLimit from 'p-limit';
 import Config from './config';
 import { Project, EnvVar } from './types';
@@ -202,8 +203,18 @@ class VercelAPI {
         },
       });
 
-      return response.ok;
-    } catch {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        console.error(chalk.red(`Token validation failed: ${response.status} ${response.statusText}`));
+        if (errorData.error?.message) {
+          console.error(chalk.red(`Error: ${errorData.error.message}`));
+        }
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error(chalk.red(`Token validation error: ${(error as Error).message}`));
       return false;
     }
   }
