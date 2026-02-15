@@ -2,210 +2,72 @@
 
 Search within environment variable **values** across your Vercel projects. Find where specific connection strings, API keys, or URLs are being used.
 
-Built with **TypeScript** and **pnpm**.
-
-## Overview
-
-This tool searches **within the actual values** of environment variables (not the names). For example:
-- Find all environment variables containing `postgres://`
-- Find where `stripe.com` is used
-- Search for specific API keys or tokens
-
-## Prerequisites
-
-- Node.js 18.0.0 or higher
-- pnpm package manager
-- Vercel account with API access
-
 ## Installation
 
-This project uses **pnpm** as its package manager:
-
 ```bash
-# Install pnpm if you don't have it
-npm install -g pnpm
-
-# Install dependencies
-pnpm install
-
-# Build the TypeScript code
-pnpm run build
+npm install -g vercel-env-checker
 ```
 
-## Usage
-
-Run the interactive CLI:
+## Quick Start
 
 ```bash
-pnpm run env-check
+# Run the interactive wizard
+vecw
+
+# Or use the CLI with commands
+vec login -t YOUR_TOKEN
+vec val "postgres://"
+vec run
 ```
 
-Or after building:
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `vec login -t <token>` | Authenticate with Vercel |
+| `vec logout` | Clear stored authentication |
+| `vec val <query>` | Search env var values (alias: `check-value`) |
+| `vec run` | Run interactive step-by-step wizard |
+| `vecw` | Shortcut for interactive wizard |
+
+## Examples
 
 ```bash
-node dist/run.js
+# Authenticate
+vec login -t your_vercel_token
+
+# Search for postgres connections
+vec val "postgres://"
+
+# Search in production only
+vec val "stripe.com" --target production
+
+# Run interactive wizard
+vecw
 ```
 
-The tool will guide you through the following steps:
-
-1. **Authentication** — Log in with your Vercel token (if not already authenticated)
+The interactive wizard guides you through:
+1. **Authentication** — Log in with your Vercel token
 2. **Environment Selection** — Choose: production, preview, development, or all
-3. **Project Selection** — Use arrow keys and Space to select which projects to search
-4. **Value Search** — Enter the text to search for within environment variable values
-
-## Example
-
-```bash
-$ pnpm run env-check
-
-🚀 Vercel Environment Variable Value Checker
-
-This tool searches within environment variable values.
-
-✅ Already authenticated.
-
-🌍 Select an environment to check:
-
-1. production — Production deployments
-2. preview — Preview deployments
-3. development — Development environment
-4. all — All environments (default)
-
-Enter choice (1-4) [4]: 1
-
-✅ Will check the production environment.
-
-📦 Fetching projects...
-
-📋 Select Projects (Space to toggle, Enter to confirm, A to select all, Ctrl+C to cancel):
-
-→ [✓] web-app
-  [ ] api-service
-  [✓] payment-portal
-  [ ] marketing-site
-
-2 project(s) selected
-
-✅ Selected 2 project(s): web-app, payment-portal
-
-Enter value to search for (e.g., postgres://, stripe.com, api.example.com): postgres://
-
-🔍 Searching for "postgres://" within environment variable values...
-
-🔍 Found 2 variables (production) with values containing "postgres://":
-
-📁 web-app:
-┌─────────────────┬──────────────────────────────────────────┬────────────┐
-│ Key             │ Value (partial)                          │ Target     │
-├─────────────────┼──────────────────────────────────────────┼────────────┤
-│ DATABASE_URL    │ postgres://user:pass@...com:5432/dbname  │ production │
-└─────────────────┴──────────────────────────────────────────┴────────────┘
-
-📁 payment-portal:
-┌─────────────────┬──────────────────────────────────────────┬────────────┐
-│ Key             │ Value (partial)                          │ Target     │
-├─────────────────┼──────────────────────────────────────────┼────────────┤
-│ DB_CONNECTION   │ postgres://admin:...xyz.com/production   │ production │
-└─────────────────┴──────────────────────────────────────────┴────────────┘
-
-⚠️  Note: Some values may be encrypted and inaccessible via the Vercel API.
-
-✅ Done!
-```
-
-## Controls
-
-- **Space** — Toggle project selection
-- **Enter** — Confirm selection and continue
-- **A** — Select or deselect all projects
-- **↑↓** — Navigate up or down
-- **Ctrl+C** — Cancel
-
-## Development Commands
-
-```bash
-# Build TypeScript to JavaScript
-pnpm run build
-
-# Run in development mode (using ts-node)
-pnpm run dev
-
-# Clean build files
-pnpm run clean
-```
-
-## Project Structure
-
-```
-.
-├── bin/
-│   └── cli.ts          # CLI entry point (TypeScript)
-├── src/
-│   ├── types.ts        # TypeScript type definitions
-│   ├── config.ts       # Configuration management
-│   ├── vercel-api.ts   # Vercel API client
-│   └── index.ts        # Main application logic
-├── run.ts              # Interactive runner
-├── package.json        # Package configuration
-├── tsconfig.json       # TypeScript configuration
-└── README.md
-```
+3. **Project Selection** — Use arrow keys and Space to select projects
+4. **Value Search** — Enter text to search within env var values
 
 ## Getting a Vercel Token
 
 1. Navigate to https://vercel.com/account/tokens
 2. Click **Create Token**
 3. Copy the generated token
-4. Paste it when prompted during your first run
-
-## Rate Limiting & Performance
-
-This tool implements intelligent rate limiting to stay within Vercel API limits:
-
-- **Concurrency**: Maximum 5 concurrent requests
-- **Request Rate**: Minimum 100ms between requests (max 10 req/sec)
-- **Retry Logic**: Failed requests are retried up to 3 times with exponential backoff
-- **Caching**: 
-  - Project list: Cached for 1 hour
-  - Environment variables: Cached for 5 minutes (raw data only, decrypted values are never cached)
-
-These limits are conservative and should prevent 429 (rate limit) errors while maintaining good performance.
-
-## Security & Token Storage
-
-Your Vercel API token is stored **locally** on your machine:
-
-- **Location**: `~/.vercel-env-checker/config.json`
-- **Format**: Plain JSON file with the token stored as a string
-- **Permissions**: File permissions depend on your system defaults
-- **Scope**: Token is only used to communicate with Vercel's API
-
-### Alternative: Environment Variable
-
-You can also provide the token via an environment variable instead of saving it locally:
-
-```bash
-export VERCEL_TOKEN=your_token_here
-pnpm run env-check
-```
-
-When `VERCEL_TOKEN` is set, the tool will use it automatically without prompting for login.
-
-### Removing Stored Credentials
-
-To remove the saved token and clear all cached data:
-
-```bash
-pnpm run env-check
-# Then select logout option
-# Or manually delete: rm -rf ~/.vercel-env-checker
-```
 
 ## Requirements
 
 - Node.js 18.0.0 or higher
-- pnpm package manager
 - Vercel account with API access
+
+## Security
+
+- Token stored locally at `~/.vercel-env-checker/config.json`
+- Or use `VERCEL_TOKEN` environment variable
+- Decrypted values are never cached
 
 ## License
 
