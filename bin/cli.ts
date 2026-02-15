@@ -56,4 +56,16 @@ program
     }
   });
 
+program
+  .command('run')
+  .description('Run interactive step-by-step wizard')
+  .action(() => {
+    try {
+      require('../run');
+    } catch (error) {
+      console.error(chalk.red('Error:'), (error as Error).message);
+      process.exit(1);
+    }
+  });
+
 program.parse();
